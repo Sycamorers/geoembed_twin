@@ -47,7 +47,7 @@ def cmd_render_depth(args):
     from .depth.stochastic_depth import render_depth_median
     gs = load_ply(Path(args.input))
     cams = sample_sphere_cameras(num=args.num_cams, width=args.width, height=args.height, fov=args.fov)
-    adapter = load_depth_adapter(prefer_upstream=args.use_upstream)
+    adapter = load_depth_adapter()
     outputs = adapter.render_median_depth(gs, cams, image_size=(args.height, args.width), topk=args.topk)
     outdir = Path(args.outdir)
     outdir.mkdir(parents=True, exist_ok=True)
@@ -63,8 +63,6 @@ def cmd_demo(args):
 
     run_demo(
         fast=args.fast,
-        force_fallback=args.force_fallback,
-        use_upstream_depth=args.use_upstream_depth,
         filter_floaters=args.filter_floaters,
         num_cams=args.num_cams,
         width=args.width,
@@ -118,13 +116,11 @@ def build_parser():
     p_depth.add_argument("--height", type=int, default=128)
     p_depth.add_argument("--fov", type=float, default=60.0)
     p_depth.add_argument("--topk", type=int, default=32)
-    p_depth.add_argument("--use-upstream", action="store_true")
     p_depth.set_defaults(func=cmd_render_depth)
 
     p_demo = sub.add_parser("demo", help="Run full synthetic demo")
     p_demo.add_argument("--fast", action="store_true")
-    p_demo.add_argument("--force-fallback", action="store_true", help="Skip upstream SF-VAE even if present")
-    p_demo.add_argument("--use-upstream-depth", action="store_true")
+    p_demo.add_argument("--force-fallback", action="store_true", help="(deprecated) internal model is always used")
     p_demo.add_argument("--filter-floaters", action="store_true")
     p_demo.add_argument("--num-cams", type=int, default=3)
     p_demo.add_argument("--width", type=int, default=128)

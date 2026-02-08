@@ -12,7 +12,7 @@
 - Runs with a tiny dependency set (torch, numpy, matplotlib, imageio/pillow, plyfile); optional extras only enhance speed/visuals.
 - Deterministic sampling + sign-canonical quaternions make embeddings stable without heavy training.
 - Depth median search is monotonic/bracketed, giving reliable residuals even with few views.
-- Optional adapters auto-detect upstream repos but fall back seamlessly, keeping the demo runnable in isolation.
+- Single self-contained implementation; adapters are thin wrappers over the in-repo SF-VAE and stochastic-solids depth.
 
 ## Trade-offs & limitations
 - Fallback SF-VAE is shallow and trains on synthetic blobs; quality is sufficient for invariance tests but not photorealistic tasks.

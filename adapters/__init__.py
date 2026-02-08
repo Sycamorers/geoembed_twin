@@ -1,4 +1,9 @@
-from .repo_scan import scan_repos, register_repos_on_sys_path
+from .sfvae_adapter import SFVAEAdapter, load_adapter  # noqa: F401
+from .ggs_depth_adapter import GeometryGroundedDepthAdapter, load_depth_adapter  # noqa: F401
 
-# Register immediately so optional upstream repos are importable.
-REPOS = register_repos_on_sys_path()
+__all__ = [
+    "SFVAEAdapter",
+    "load_adapter",
+    "GeometryGroundedDepthAdapter",
+    "load_depth_adapter",
+]

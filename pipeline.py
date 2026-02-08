@@ -27,8 +27,6 @@ def _ensure_ckpt(ckpt_path: Path, fast: bool):
 
 def run_demo(
     fast: bool = False,
-    force_fallback: bool = False,
-    use_upstream_depth: bool = False,
     filter_floaters: bool = False,
     num_cams: int = 3,
     width: int = 128,
@@ -67,7 +65,7 @@ def run_demo(
     # Train or load SFVAE
     ckpt_path = _ensure_ckpt(ckpt_path, fast=fast)
 
-    adapter = SFVAEAdapter(prefer_upstream=not force_fallback, device=device)
+    adapter = SFVAEAdapter(device=device)
     emb_before, means_before = adapter.encode(gs_before, ckpt_fallback=ckpt_path)
     emb_after, means_after = adapter.encode(gs_after, ckpt_fallback=ckpt_path)
 
@@ -77,7 +75,7 @@ def run_demo(
 
     # Cameras and depth
     cams = sample_sphere_cameras(num=num_cams, width=width, height=height, fov=fov, device=device)
-    depth_adapter = load_depth_adapter(prefer_upstream=use_upstream_depth, device=device)
+    depth_adapter = load_depth_adapter(device=device)
 
     print("Rendering depth before/after...")
     depth_before = depth_adapter.render_median_depth(gs_before, cams, image_size=(height, width))

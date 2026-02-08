@@ -97,8 +97,6 @@ def _demo_smoke(quick: bool = False, device=None) -> TestCaseResult:
     start = time.time()
     out_root = run_demo(
         fast=True,
-        force_fallback=True,
-        use_upstream_depth=False,
         filter_floaters=False,
         num_cams=2 if quick else 3,
         width=96 if quick else 128,
