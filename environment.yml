@@ -1,0 +1,38 @@
+name: geoembed_twin
+channels:
+  - pytorch
+  - nvidia
+  - conda-forge
+dependencies:
+  - python=3.10
+  - pytorch=2.2.*
+  - torchvision
+  - pytorch-cuda=11.8
+  - numpy
+  - scipy
+  - pyyaml
+  - tqdm
+  - matplotlib
+  - pillow
+  - imageio
+  - open3d
+  - plyfile
+  - scikit-learn
+  - faiss-cpu
+  - rich
+  - ninja
+  - cmake
+  - gcc_linux-64
+  - gxx_linux-64
+  - pip
+  - pip:
+      - geomloss
+      - torch-scatter
+      - pytorch3d
+      - gsplat
+      - plotly
+      - pandas
+      - scikit-image
+      - opencv-python
+      - -e ../gs-embedding
+      - -e ../Geometry-Grounded-Gaussian-Splatting
