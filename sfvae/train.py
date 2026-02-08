@@ -57,6 +57,10 @@ def train_sfvae(
         epochs = max(epochs // 2, 5)
         num_batches = max(num_batches // 2, 50)
         batch_size = min(batch_size, 96)
+    if not torch.cuda.is_available():
+        epochs = min(epochs, 2)
+        num_batches = min(num_batches, 10)
+        batch_size = min(batch_size, 32)
 
     model = SFVAE(latent_dim=latent_dim, n_grid=n_grid, deterministic=False).to(device)
     optimizer = optim.Adam(model.parameters(), lr=lr)

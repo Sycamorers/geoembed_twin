@@ -7,7 +7,7 @@ dependencies:
   - python=3.10
   - pytorch=2.2.*
   - torchvision
-  - pytorch-cuda=11.8
+  - pytorch-cuda=12.1
   - numpy
   - scipy
   - pyyaml
@@ -28,7 +28,8 @@ dependencies:
   - pip:
       - geomloss
       - torch-scatter
-      - pytorch3d
+  # pytorch3d removed here because prebuilt pip wheels may not be available for PyTorch 2.2 + CUDA 12.1
+  # Install pytorch3d separately after the environment is created using a matching conda/pip wheel.
       - gsplat
       - plotly
       - pandas

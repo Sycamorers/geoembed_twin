@@ -32,24 +32,27 @@ def _sample_on_cube(n: int, size: float, device) -> Tuple[torch.Tensor, torch.Te
         if not mask.any():
             continue
         uv = coords[mask]
+        nval = None
         if f == 0:  # +x
             pos[mask] = torch.stack([torch.full_like(uv[:, 0], half), uv[:, 0] * half, uv[:, 1] * half], dim=1)
-            normal[mask] = torch.tensor([1, 0, 0], device=device)
+            nval = torch.tensor([1.0, 0.0, 0.0], device=device, dtype=pos.dtype)
         elif f == 1:  # -x
             pos[mask] = torch.stack([-torch.full_like(uv[:, 0], half), uv[:, 0] * half, uv[:, 1] * half], dim=1)
-            normal[mask] = torch.tensor([-1, 0, 0], device=device)
+            nval = torch.tensor([-1.0, 0.0, 0.0], device=device, dtype=pos.dtype)
         elif f == 2:  # +y
             pos[mask] = torch.stack([uv[:, 0] * half, torch.full_like(uv[:, 0], half), uv[:, 1] * half], dim=1)
-            normal[mask] = torch.tensor([0, 1, 0], device=device)
+            nval = torch.tensor([0.0, 1.0, 0.0], device=device, dtype=pos.dtype)
         elif f == 3:  # -y
             pos[mask] = torch.stack([uv[:, 0] * half, -torch.full_like(uv[:, 0], half), uv[:, 1] * half], dim=1)
-            normal[mask] = torch.tensor([0, -1, 0], device=device)
+            nval = torch.tensor([0.0, -1.0, 0.0], device=device, dtype=pos.dtype)
         elif f == 4:  # +z
             pos[mask] = torch.stack([uv[:, 0] * half, uv[:, 1] * half, torch.full_like(uv[:, 0], half)], dim=1)
-            normal[mask] = torch.tensor([0, 0, 1], device=device)
+            nval = torch.tensor([0.0, 0.0, 1.0], device=device, dtype=pos.dtype)
         else:  # -z
             pos[mask] = torch.stack([uv[:, 0] * half, uv[:, 1] * half, -torch.full_like(uv[:, 0], half)], dim=1)
-            normal[mask] = torch.tensor([0, 0, -1], device=device)
+            nval = torch.tensor([0.0, 0.0, -1.0], device=device, dtype=pos.dtype)
+        if nval is not None:
+            normal[mask] = nval
     return pos, normal
 
 

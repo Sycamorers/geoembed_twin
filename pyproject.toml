@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "geoembed_twin"
+version = "0.2.0"
+description = "GeoEmbedTwin: SF-VAE embeddings + stochastic-solids depth for 3DGS digital twins"
+readme = "README.md"
+authors = [{name = "GeoEmbedTwin"}]
+requires-python = ">=3.10"
+dependencies = [
+  "torch",
+  "numpy",
+  "matplotlib",
+  "imageio>=2.9",
+  "plyfile",
+]
+
+[project.scripts]
+geoembed_twin-demo = "geoembed_twin.__main__:main"

@@ -1,0 +1,6 @@
+# Optional packages used when available. Core pipeline runs without them.
+geomloss>=0.2.6
+faiss-cpu>=1.7.4
+open3d>=0.17
+rich>=13.7
+pytest>=7.4

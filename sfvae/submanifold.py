@@ -11,8 +11,13 @@ from ..gaussians.io import GaussianSet, quat_to_rotmat
 
 def spherical_grid(n: int = 12, device=None, dtype=None) -> torch.Tensor:
     """Deterministic grid on the sphere (longitude/latitude mesh)."""
-    theta = torch.linspace(0, 2 * math.pi, n, device=device, dtype=dtype, endpoint=False)
-    phi = torch.linspace(1e-3, math.pi - 1e-3, n, device=device, dtype=dtype)
+    kwargs = {}
+    if dtype is not None:
+        kwargs["dtype"] = dtype
+    if device is not None:
+        kwargs["device"] = device
+    theta = torch.linspace(0, 2 * math.pi, n + 1, **kwargs)[:-1]
+    phi = torch.linspace(1e-3, math.pi - 1e-3, n, **kwargs)
     theta, phi = torch.meshgrid(theta, phi, indexing="ij")
     x = torch.sin(phi) * torch.cos(theta)
     y = torch.sin(phi) * torch.sin(theta)

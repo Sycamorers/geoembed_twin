@@ -42,9 +42,9 @@ def look_at(eye: torch.Tensor, target: torch.Tensor, up: torch.Tensor = None) ->
     up = up if up is not None else torch.tensor([0.0, 1.0, 0.0], device=eye.device)
     forward = (target - eye)
     forward = forward / torch.norm(forward)
-    right = torch.cross(forward, up)
+    right = torch.cross(forward, up, dim=0)
     right = right / torch.norm(right)
-    up_vec = torch.cross(right, forward)
+    up_vec = torch.cross(right, forward, dim=0)
     R = torch.stack([right, up_vec, -forward], dim=1)
     return R
 

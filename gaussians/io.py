@@ -6,7 +6,24 @@ from typing import Dict, Optional, Tuple
 
 import numpy as np
 import torch
-from plyfile import PlyData, PlyElement
+try:
+    from plyfile import PlyData, PlyElement  # type: ignore
+    _HAS_PLYFILE = True
+except Exception:
+    PlyData = PlyElement = None  # type: ignore
+    _HAS_PLYFILE = False
+
+_PLY_TYPE_MAP = {
+    "char": "i1",
+    "uchar": "u1",
+    "short": "i2",
+    "ushort": "u2",
+    "int": "i4",
+    "uint": "u4",
+    "float": "f4",
+    "float32": "f4",
+    "double": "f8",
+}
 
 
 @dataclass
@@ -94,16 +111,26 @@ _SH_DC_RE = re.compile(r"f_dc_(\d+)")
 _SH_REST_RE = re.compile(r"f_rest_(\d+)")
 
 
-def _extract_property(data: PlyData, aliases) -> Optional[np.ndarray]:
-    props = data.elements[0].data.dtype.names
+def _extract_property(data, aliases) -> Optional[np.ndarray]:
+    if hasattr(data, "elements"):
+        props = data.elements[0].data.dtype.names
+        source = data.elements[0].data
+    else:
+        props = data.dtype.names
+        source = data
     for alias in aliases:
         if alias in props:
-            return np.asarray(data.elements[0].data[alias])
+            return np.asarray(source[alias])
     return None
 
 
-def _extract_prefixed(data: PlyData, prefix: str) -> Dict[int, np.ndarray]:
-    props = data.elements[0].data.dtype.names
+def _extract_prefixed(data, prefix: str) -> Dict[int, np.ndarray]:
+    if hasattr(data, "elements"):
+        props = data.elements[0].data.dtype.names
+        source = data.elements[0].data
+    else:
+        props = data.dtype.names
+        source = data
     out: Dict[int, np.ndarray] = {}
     for p in props:
         if p.startswith(prefix):
@@ -111,7 +138,7 @@ def _extract_prefixed(data: PlyData, prefix: str) -> Dict[int, np.ndarray]:
                 idx = int(p[len(prefix):])
             except ValueError:
                 continue
-            out[idx] = np.asarray(data.elements[0].data[p])
+            out[idx] = np.asarray(source[p])
     return out
 
 
@@ -129,13 +156,18 @@ def _maybe_sigmoid_opacity(opacity: torch.Tensor) -> torch.Tensor:
 
 
 def load_ply(path: Path) -> GaussianSet:
-    ply = PlyData.read(path)
-    props = ply.elements[0].data.dtype.names
-    arr = ply.elements[0].data
+    if _HAS_PLYFILE:
+        ply = PlyData.read(path)
+        props = ply.elements[0].data.dtype.names
+        arr = ply.elements[0].data
+        data_source = ply
+    else:
+        arr, props = _load_ply_fallback(path)
+        data_source = arr
 
     def get_vec(prefixes):
         for pfx in prefixes:
-            matches = _extract_prefixed(ply, pfx)
+            matches = _extract_prefixed(data_source, pfx)
             if matches:
                 ordered = [matches[i] for i in sorted(matches.keys())]
                 return np.stack(ordered, axis=1)
@@ -155,8 +187,8 @@ def load_ply(path: Path) -> GaussianSet:
         opacity_np = np.ones((means.shape[0],), dtype=np.float32)
 
     # SH
-    sh_dc = _extract_prefixed(ply, "f_dc_")
-    sh_rest = _extract_prefixed(ply, "f_rest_")
+    sh_dc = _extract_prefixed(data_source, "f_dc_")
+    sh_rest = _extract_prefixed(data_source, "f_rest_")
     sh = None
     if sh_dc:
         dc = np.stack([sh_dc[i] for i in sorted(sh_dc.keys())], axis=1)  # (N,3)
@@ -207,6 +239,74 @@ def load_ply(path: Path) -> GaussianSet:
     return gs
 
 
+def _load_ply_fallback(path: Path) -> Tuple[np.ndarray, Tuple[str, ...]]:
+    """Minimal ASCII/Binary little-endian PLY loader for offline use."""
+    with open(path, "rb") as f:
+        header_lines = []
+        header_end = 0
+        while True:
+            line = f.readline()
+            if not line:
+                raise ValueError("Invalid PLY: missing end_header")
+            header_lines.append(line.decode("ascii").strip())
+            if line.strip() == b"end_header":
+                header_end = f.tell()
+                break
+
+    fmt = None
+    vertex_count = 0
+    props = []
+    in_vertex = False
+    for line in header_lines:
+        if line.startswith("format"):
+            _, fmt, _ = line.split()
+        elif line.startswith("element"):
+            parts = line.split()
+            in_vertex = parts[1] == "vertex"
+            if in_vertex:
+                vertex_count = int(parts[2])
+        elif in_vertex and line.startswith("property"):
+            parts = line.split()
+            ptype, pname = parts[1], parts[2]
+            props.append((pname, _PLY_TYPE_MAP.get(ptype, "f4")))
+
+    dtype = np.dtype(props)
+    if fmt is None:
+        raise ValueError("PLY format line missing")
+
+    if fmt.startswith("ascii"):
+        data = np.loadtxt(path, skiprows=len(header_lines), dtype=dtype, max_rows=vertex_count)
+    elif fmt.startswith("binary_little_endian"):
+        with open(path, "rb") as f:
+            f.seek(header_end)
+            data = np.fromfile(f, dtype=dtype, count=vertex_count)
+    else:
+        raise ValueError(f"Unsupported PLY format: {fmt}")
+
+    return data, data.dtype.names
+
+
+def _save_ascii(elem_data: Dict[str, np.ndarray], path: Path) -> None:
+    fields = list(elem_data.keys())
+    N = len(next(iter(elem_data.values())))
+    with open(path, "w") as f:
+        f.write("ply\nformat ascii 1.0\n")
+        f.write(f"element vertex {N}\n")
+        for k in fields:
+            f.write(f"property float {k}\n")
+        f.write("end_header\n")
+        for i in range(N):
+            vals = [elem_data[k][i] for k in fields]
+            flat_vals = []
+            for v in vals:
+                if np.isscalar(v):
+                    flat_vals.append(float(v))
+                else:
+                    # assume 1D
+                    flat_vals.extend([float(x) for x in np.ravel(v)])
+            f.write(" ".join(map(str, flat_vals)) + "\n")
+
+
 def save_ply(gaussians: GaussianSet, path: Path, extra_fields: Optional[Dict[str, np.ndarray]] = None) -> None:
     N = gaussians.N
     means = gaussians.means.cpu().numpy()
@@ -243,12 +343,15 @@ def save_ply(gaussians: GaussianSet, path: Path, extra_fields: Optional[Dict[str
                 raise ValueError(f"extra field {k} has wrong length {arr.shape[0]} != {N}")
             elem_data[k] = arr
 
-    dtype = [(k, "f4") for k in elem_data.keys()]
-    structured = np.empty(N, dtype=dtype)
-    for k, v in elem_data.items():
-        structured[k] = v
-    el = PlyElement.describe(structured, "vertex")
-    PlyData([el]).write(str(path))
+    if _HAS_PLYFILE:
+        dtype = [(k, "f4") for k in elem_data.keys()]
+        structured = np.empty(N, dtype=dtype)
+        for k, v in elem_data.items():
+            structured[k] = v
+        el = PlyElement.describe(structured, "vertex")
+        PlyData([el]).write(str(path))
+    else:
+        _save_ascii(elem_data, path)
 
 
 __all__ = ["GaussianSet", "load_ply", "save_ply", "quat_to_rotmat"]
